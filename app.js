@@ -32,7 +32,7 @@ app.use(session({
 	saveUninitialized: true
 }));
 app.use(cookieParser())
-app.set("views engine", "ejs")
+app.set("view engine", "ejs")
 
 
 //connect to mongoDb
@@ -58,7 +58,7 @@ io.on("connection", (socket)=>{
         console.log(msg)
         //emit the message to all users
         var count = 0
-        socket.broadcast.emit("chat message", req.session.username + ": " + msg)
+        io.emit("chat message", msg)
         
         //save the message to MongoDB
         const m = new MessageSchema({content: msg, date: current.toLocaleDateString()})
@@ -72,12 +72,12 @@ io.on("connection", (socket)=>{
 //Root of the server
 app.get("/", async (req, res)=>{
     if(req.session.isLogged === true){
-        res.render("index")
+        res.render("index", {name: req.session.username})
         console.log("USERNAME IN SESSION: " + req.session.username)
         
     }
     else{
-        res.send("You are not a user")
+        res.redirect("/login")
     }
 })
 
