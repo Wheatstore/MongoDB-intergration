@@ -18,6 +18,8 @@ const { urlencoded } = require('body-parser');
 const cookieParser = require('cookie-parser');
 const { stringify } = require('querystring');
 const { MongoGridFSChunkError } = require('mongodb');
+const { equal } = require('assert');
+
 
 //active connections variable for 
 var activeConnections = 0
@@ -30,22 +32,12 @@ app.use(session({
 	saveUninitialized: true
 }));
 app.use(cookieParser())
+app.set("views engine", "ejs")
+
 
 //connect to mongoDb
 mongoose.connect("mongodb+srv://wheatstore:SkyWalker1025@test.tpprf3j.mongodb.net/?retryWrites=true&w=majority", ()=>{
     console.log("connected succesfully")
-})
-
-//Root of the server
-app.get("/", (req, res)=>{
-    console.log(req.session.username, req.session.password)
-    if(checkUser(req.session.username)){
-        res.sendFile(__dirname + "/index.html")
-        console.log("USERNAME IN SESSION: " + req.session.username)
-    }
-    else{
-        res.send("You are not a user")
-    }
 })
 
 io.on("connection", (socket)=>{
@@ -65,7 +57,9 @@ io.on("connection", (socket)=>{
     socket.on("chat message", async (msg)=>{
         console.log(msg)
         //emit the message to all users
-        io.emit("chat message", msg)
+        var count = 0
+        socket.broadcast.emit("chat message", req.session.username + ": " + msg)
+        
         //save the message to MongoDB
         const m = new MessageSchema({content: msg, date: current.toLocaleDateString()})
         await m.save().then((
@@ -74,29 +68,57 @@ io.on("connection", (socket)=>{
     })
 })
 
+
+//Root of the server
+app.get("/", async (req, res)=>{
+    if(req.session.isLogged === true){
+        res.render("index")
+        console.log("USERNAME IN SESSION: " + req.session.username)
+        
+    }
+    else{
+        res.send("You are not a user")
+    }
+})
+
+//req.login of the server
 app.get("/login", (req, res)=>{
     res.sendFile(__dirname + "/login.html")
 })
 
 //login post section
-app.post("/login", (req, res)=>{
-    if(checkUserWithPassword(req.body.name, req.body.password)){
-        console.log("YESSSS")
+app.post("/login", async (req, res)=>{
+    //check if the the information entered is in the database
+    const check3 = await User.find({username: req.body.name, password: req.body.password})
+    //if the length is greater than 0 the information checks out
+    console.log("ARRAY LENGTH: " + check3.length)
+    if(check3.length > 0){
+        //creates the req.sessions to make sure the main server accepts
+        req.session.username = req.body.name
+        req.session.password = req.body.password
+        req.session.isLogged = true
         res.redirect("/")
     }
     else{
         res.send("You are not a user")
+        console.log("____________________________")
     }
-    console.log(req.body)
 })
 
 //register post section
 app.post("/register", async (req, res)=>{
-    console.log(req.body)
-    if(checkUser(req.body.name)){
+    //get the length of the array and compare the information with the user
+    const check = await User.find({username: req.body.name})
+    console.log("ARRAY: " + check)
+    console.log("ARRAY LENGTH: " + check.length)
+    //check if uesrname is already in use
+    if(check.length > 0){
         res.send("User name already in use")
+        console.log("____________________________")
     }
+    //otherwise let the user register
     else{
+        //save the uername into the database
         const user = new User({username: req.body.name, password: req.body.password})
         await user.save().then((
         console.log("User saved Succesfully")
@@ -104,10 +126,9 @@ app.post("/register", async (req, res)=>{
         //create the req session 
         req.session.isLogged = true
         req.session.username = req.body.name
-        req.session.viewTimes = 0
         req.session.password = req.body.password
         //prints the session username
-        console.log("REQ BODY: " + stringify(req.body))
+        //redirect the user to the main page
         console.log("USERNAME: " + req.session.username)
         res.redirect("/")
     }
@@ -123,32 +144,3 @@ app.get("/register", (req, res)=>{
 server.listen(3000, () =>{
     console.log("[SERVER CONNECTED] on port 3000...")
 })
-
-async function checkUser(user){
-    const check = await User.find({username: user})
-    console.log("RUNNING FUNCTION")
-    console.log("ARRAY: " + check)
-    if(check.length > 0){
-        console.log("CHECK USER: User exists")
-        return true
-    }
-    else if(check.length < 1){
-        console.log("User does not exist")
-        return false
-    }
-
-}
-async function checkUserWithPassword(user, password){
-    const check = await User.find({username: user, password:password})
-    console.log("RUNNING FUNCTION")
-    console.log("ARRAY: " + check)
-    if(check.length > 0){
-        console.log("CHECK USER: User exists")
-        return true
-    }
-    else if(check.length < 1){
-        console.log("User does not exist")
-        return false
-    }
-
-}
