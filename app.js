@@ -58,7 +58,7 @@ io.on("connection", (socket)=>{
         console.log(msg)
         //emit the message to all users
         var count = 0
-        io.emit("chat message", msg)
+        socket.broadcast.emit("chat message", msg)
         
         //save the message to MongoDB
         const m = new MessageSchema({content: msg, date: current.toLocaleDateString()})
