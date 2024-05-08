@@ -35,7 +35,7 @@ app.use(cookieParser())
 app.set("view engine", "ejs")
 
 
-//connect to mongoDb code
+//connect to mongoDb code using authentication provided by mongodb
 
 io.on("connection", (socket)=>{
     //code for when user connects active connections increases by 1
