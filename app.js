@@ -35,10 +35,7 @@ app.use(cookieParser())
 app.set("view engine", "ejs")
 
 
-//connect to mongoDb
-mongoose.connect("mongodb+srv://wheatstore:SkyWalker1025@test.tpprf3j.mongodb.net/?retryWrites=true&w=majority", ()=>{
-    console.log("connected succesfully")
-})
+//connect to mongoDb code
 
 io.on("connection", (socket)=>{
     //code for when user connects active connections increases by 1
